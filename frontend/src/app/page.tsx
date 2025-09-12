@@ -1,0 +1,564 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import {
+    Star,
+    Plus,
+    Filter,
+    Search,
+    Calendar,
+    ThumbsUp,
+    MessageSquare,
+    TrendingUp,
+    Award,
+    Users,
+    BarChart3
+} from 'lucide-react';
+
+interface Review {
+    id: number;
+    userName: string;
+    rating: number;
+    title: string;
+    comment: string;
+    date: string;
+    likes: number;
+    productId: string;
+    productName: string;
+    verified?: boolean;
+}
+
+interface ReviewFormData {
+    userName: string;
+    rating: number;
+    title: string;
+    comment: string;
+    productName: string;
+}
+
+// Componente principal de la página
+export default function ReviewsPage() {
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [filteredReviews, setFilteredReviews] = useState<Review[]>([]);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterRating, setFilterRating] = useState('all');
+    const [sortBy, setSortBy] = useState('newest');
+    const [loading, setLoading] = useState(true);
+
+    // Datos de ejemplo
+    const mockReviews: Review[] = [
+        {
+            id: 1,
+            userName: 'María González',
+            rating: 5,
+            title: 'Excelente producto, superó expectativas',
+            comment: 'La calidad es excepcional y el servicio al cliente fue perfecto. Llegó antes de lo esperado y en perfectas condiciones. Definitivamente lo recomiendo y volvería a comprarlo.',
+            date: '2025-09-10',
+            likes: 24,
+            productId: 'prod-1',
+            productName: 'iPhone 15 Pro Max',
+            verified: true
+        },
+        {
+            id: 2,
+            userName: 'Carlos Rodríguez',
+            rating: 4,
+            title: 'Muy buena relación calidad-precio',
+            comment: 'Producto sólido con buenas características. El envío fue rápido y el empaque excelente. Solo le falta algunas funciones menores que esperaba.',
+            date: '2025-09-08',
+            likes: 18,
+            productId: 'prod-2',
+            productName: 'MacBook Air M3',
+            verified: true
+        },
+        {
+            id: 3,
+            userName: 'Ana López',
+            rating: 3,
+            title: 'Cumple pero sin sorprender',
+            comment: 'El producto está bien para el precio, pero esperaba un poco más. El diseño es atractivo y funciona correctamente, aunque la batería podría durar más.',
+            date: '2025-09-05',
+            likes: 7,
+            productId: 'prod-3',
+            productName: 'AirPods Pro 2',
+            verified: false
+        },
+        {
+            id: 4,
+            userName: 'Diego Martínez',
+            rating: 5,
+            title: 'Increíble calidad y rendimiento',
+            comment: 'Después de un mes de uso, puedo decir que es una excelente inversión. La calidad de construcción es premium y el rendimiento es excepcional.',
+            date: '2025-09-03',
+            likes: 31,
+            productId: 'prod-4',
+            productName: 'iPad Pro 12.9"',
+            verified: true
+        }
+    ];
+
+    // Cargar datos al montar el componente
+    useEffect(() => {
+        const loadReviews = async () => {
+            setLoading(true);
+            try {
+
+                // Simulamos delay de carga
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                setReviews(mockReviews);
+                setFilteredReviews(mockReviews);
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadReviews();
+    }, []);
+
+    // Filtrar y ordenar reseñas
+    useEffect(() => {
+        filterAndSortReviews();
+    }, [reviews, searchTerm, filterRating, sortBy]);
+
+    const filterAndSortReviews = () => {
+        let filtered = [...reviews];
+
+        // Filtrar por búsqueda
+        if (searchTerm) {
+            filtered = filtered.filter(review =>
+                review.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                review.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                review.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                review.userName.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        // Filtrar por rating
+        if (filterRating !== 'all') {
+            filtered = filtered.filter(review => review.rating >= parseInt(filterRating));
+        }
+
+        // Ordenar
+        filtered.sort((a, b) => {
+            switch (sortBy) {
+                case 'newest':
+                    return new Date(b.date).getTime() - new Date(a.date).getTime();
+                case 'oldest':
+                    return new Date(a.date).getTime() - new Date(b.date).getTime();
+                case 'rating-high':
+                    return b.rating - a.rating;
+                case 'rating-low':
+                    return a.rating - b.rating;
+                case 'likes':
+                    return b.likes - a.likes;
+                default:
+                    return 0;
+            }
+        });
+
+        setFilteredReviews(filtered);
+    };
+
+    // Componente de rating con estrellas
+    const StarRating: React.FC<{
+        rating: number;
+        size?: 'small' | 'medium' | 'large';
+        interactive?: boolean;
+        onRatingChange?: (rating: number) => void;
+    }> = ({ rating, size = 'medium', interactive = false, onRatingChange }) => {
+        const sizeClasses = {
+            small: 'w-4 h-4',
+            medium: 'w-5 h-5',
+            large: 'w-6 h-6'
+        };
+
+        return (
+            <div className="flex space-x-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                        key={star}
+                        className={`${sizeClasses[size]} ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-gray-300'
+                            } ${interactive ? 'cursor-pointer hover:text-amber-300 transition-colors' : ''}`}
+                        onClick={() => interactive && onRatingChange && onRatingChange(star)}
+                    />
+                ))}
+            </div>
+        );
+    };
+
+    // Modal para crear nueva reseña
+    const CreateReviewModal: React.FC = () => {
+        const [formData, setFormData] = useState<ReviewFormData>({
+            userName: '',
+            rating: 5,
+            title: '',
+            comment: '',
+            productName: ''
+        });
+
+        const handleSubmit = async () => {
+            if (!formData.userName || !formData.productName || !formData.title || !formData.comment) {
+                alert('Por favor completa todos los campos');
+                return;
+            }
+
+            try {
+
+                const newReview: Review = {
+                    ...formData,
+                    id: reviews.length + 1,
+                    date: new Date().toISOString().split('T')[0],
+                    likes: 0,
+                    productId: `prod-${reviews.length + 1}`,
+                    verified: false
+                };
+
+                setReviews([newReview, ...reviews]);
+                setShowCreateModal(false);
+                setFormData({
+                    userName: '',
+                    rating: 5,
+                    title: '',
+                    comment: '',
+                    productName: ''
+                });
+            } catch (error) {
+                console.error('Error creating review:', error);
+            }
+        };
+
+        return (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        Nueva Reseña
+                    </h3>
+
+                    <div className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Tu nombre
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.userName}
+                                onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
+                                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900"
+                                placeholder="Escribe tu nombre"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Producto
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.productName}
+                                onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+                                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="¿Qué producto estás reseñando?"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Calificación
+                            </label>
+                            <StarRating
+                                rating={formData.rating}
+                                size="large"
+                                interactive={true}
+                                onRatingChange={(rating) => setFormData({ ...formData, rating })}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Título de tu reseña
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="Resume tu experiencia en una línea"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Tu comentario
+                            </label>
+                            <textarea
+                                value={formData.comment}
+                                onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
+                                rows={4}
+                                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none text-gray-900"
+                                placeholder="Comparte los detalles de tu experiencia..."
+                            />
+                        </div>
+
+                        <div className="flex space-x-3 pt-4">
+                            <button
+                                onClick={handleSubmit}
+                                className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                            >
+                                Publicar Reseña
+                            </button>
+                            <button
+                                onClick={() => setShowCreateModal(false)}
+                                className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Card individual de reseña
+    const ReviewCard: React.FC<{ review: Review }> = ({ review }) => (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-300 group">
+            <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                        {review.userName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div className="flex items-center space-x-2">
+                            <h4 className="font-semibold text-gray-900">{review.userName}</h4>
+                            {review.verified && (
+                                <div className="flex items-center space-x-1 bg-green-50 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
+                                    <Award size={12} />
+                                    <span>Verificado</span>
+                                </div>
+                            )}
+                        </div>
+                        <p className="text-sm text-gray-600 font-medium">{review.productName}</p>
+                    </div>
+                </div>
+                <div className="flex items-center space-x-2 text-gray-500 text-sm">
+                    <Calendar size={16} />
+                    <span>{new Date(review.date).toLocaleDateString('es-ES', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                    })}</span>
+                </div>
+            </div>
+
+            <div className="mb-3">
+                <StarRating rating={review.rating} size="medium" />
+            </div>
+
+            <h3 className="font-bold text-lg text-gray-900 mb-3 line-clamp-2">{review.title}</h3>
+            <p className="text-gray-700 mb-4 leading-relaxed line-clamp-3">{review.comment}</p>
+
+            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors group/button">
+                    <ThumbsUp size={16} className="group-hover/button:scale-110 transition-transform" />
+                    <span className="font-medium">{review.likes}</span>
+                    <span className="text-sm">útil</span>
+                </button>
+                <button className="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors">
+                    <MessageSquare size={16} />
+                    <span className="text-sm font-medium">Responder</span>
+                </button>
+            </div>
+        </div>
+    );
+
+    // Estadísticas de reseñas
+    const ReviewStats: React.FC = () => {
+        const averageRating = reviews.length > 0
+            ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length)
+            : 0;
+
+        const ratingDistribution = [5, 4, 3, 2, 1].map(rating => ({
+            rating,
+            count: reviews.filter(r => r.rating === rating).length,
+            percentage: reviews.length > 0 ? (reviews.filter(r => r.rating === rating).length / reviews.length) * 100 : 0
+        }));
+
+        const verifiedCount = reviews.filter(r => r.verified).length;
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border border-blue-200">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-blue-600 font-semibold text-sm uppercase tracking-wide">Promedio</p>
+                            <p className="text-3xl font-bold text-blue-900">{averageRating.toFixed(1)}</p>
+                            <StarRating rating={Math.round(averageRating)} size="small" />
+                        </div>
+                        <TrendingUp className="w-8 h-8 text-blue-500" />
+                    </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 border border-purple-200">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-purple-600 font-semibold text-sm uppercase tracking-wide">Total</p>
+                            <p className="text-3xl font-bold text-purple-900">{reviews.length}</p>
+                            <p className="text-sm text-purple-700">reseñas</p>
+                        </div>
+                        <BarChart3 className="w-8 h-8 text-purple-500" />
+                    </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 border border-green-200">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-green-600 font-semibold text-sm uppercase tracking-wide">Verificadas</p>
+                            <p className="text-3xl font-bold text-green-900">{verifiedCount}</p>
+                            <p className="text-sm text-green-700">{reviews.length > 0 ? Math.round((verifiedCount / reviews.length) * 100) : 0}% del total</p>
+                        </div>
+                        <Users className="w-8 h-8 text-green-500" />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Loading skeleton
+    const ReviewSkeleton: React.FC = () => (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 animate-pulse">
+            <div className="flex items-start space-x-4 mb-4">
+                <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-48"></div>
+                </div>
+            </div>
+            <div className="h-4 bg-gray-200 rounded w-24 mb-3"></div>
+            <div className="h-5 bg-gray-200 rounded w-3/4 mb-3"></div>
+            <div className="h-16 bg-gray-200 rounded mb-4"></div>
+            <div className="flex justify-between">
+                <div className="h-4 bg-gray-200 rounded w-16"></div>
+                <div className="h-4 bg-gray-200 rounded w-20"></div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
+            {/* Header */}
+            <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                        <div>
+                            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                                Reseñas de Productos
+                            </h1>
+                            <p className="text-gray-600 mt-2 text-lg">
+                                Descubre experiencias reales de usuarios verificados
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2"
+                        >
+                            <Plus size={20} />
+                            <span>Escribir Reseña</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Estadísticas */}
+                {!loading && <ReviewStats />}
+
+                {/* Filtros y búsqueda */}
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-gray-200/50 mb-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center space-y-4 lg:space-y-0 lg:space-x-6">
+                        {/* Búsqueda */}
+                        <div className="flex-1">
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar reseñas, productos o usuarios..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white/50 backdrop-blur-sm"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Filtros */}
+                        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                            <div className="flex items-center space-x-3">
+                                <Filter size={18} className="text-gray-500" />
+                                <select
+                                    value={filterRating}
+                                    onChange={(e) => setFilterRating(e.target.value)}
+                                    className="border border-gray-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm"
+                                >
+                                    <option value="all">Todas las estrellas</option>
+                                    <option value="5">⭐⭐⭐⭐⭐</option>
+                                    <option value="4">⭐⭐⭐⭐ y más</option>
+                                    <option value="3">⭐⭐⭐ y más</option>
+                                    <option value="2">⭐⭐ y más</option>
+                                </select>
+                            </div>
+
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                                className="border border-gray-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm"
+                            >
+                                <option value="newest">Más recientes</option>
+                                <option value="oldest">Más antiguas</option>
+                                <option value="rating-high">Mejor valoradas</option>
+                                <option value="rating-low">Menor valoración</option>
+                                <option value="likes">Más útiles</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Lista de reseñas */}
+                <div className="space-y-6">
+                    {loading ? (
+                        // Loading skeletons
+                        Array.from({ length: 3 }, (_, i) => <ReviewSkeleton key={i} />)
+                    ) : filteredReviews.length > 0 ? (
+                        filteredReviews.map((review) => (
+                            <ReviewCard key={review.id} review={review} />
+                        ))
+                    ) : (
+                        // Estado vacío
+                        <div className="text-center py-16">
+                            <MessageSquare size={64} className="mx-auto text-gray-400 mb-6" />
+                            <h3 className="text-2xl font-bold text-gray-600 mb-3">No se encontraron reseñas</h3>
+                            <p className="text-gray-500 mb-6">
+                                {searchTerm || filterRating !== 'all'
+                                    ? 'Intenta ajustar los filtros de búsqueda'
+                                    : 'Sé el primero en escribir una reseña'
+                                }
+                            </p>
+                            {!searchTerm && filterRating === 'all' && (
+                                <button
+                                    onClick={() => setShowCreateModal(true)}
+                                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200"
+                                >
+                                    Escribir primera reseña
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Modal de crear reseña */}
+            {showCreateModal && <CreateReviewModal />}
+        </div>
+    );
+}
