@@ -15,7 +15,6 @@ class UserCreate(UserBase):
 
 class UserRead(UserBase):
     id: int
-    is_active: bool
 
     class Config:
         orm_mode = True
