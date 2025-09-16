@@ -11,6 +11,6 @@ class Review(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
 
-    # relaciones
+    # Relaciones
     user = relationship("User", back_populates="reviews")
     product = relationship("Product", back_populates="reviews")

@@ -1,7 +1,21 @@
 from pydantic import BaseModel
 
+class UserSimple(BaseModel):
+    id: int
+    username: str
+
+    class Config:
+        from_attributes = True  # antes era orm_mode=True
+
+class ProductSimple(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
 class ReviewBase(BaseModel):
-    content: str
+    comment: str | None = None
     rating: int
 
 class ReviewCreate(ReviewBase):
@@ -12,6 +26,8 @@ class ReviewRead(ReviewBase):
     id: int
     user_id: int
     product_id: int
+    user: UserSimple | None = None
+    product: ProductSimple | None = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
